@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Markdown Manager</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <button class="sidebar-toggle" id="sidebarToggleButton" type="button" title="折叠目录栏">☰</button>
+      <aside class="sidebar" aria-label="文档管理">
+        <div class="brand">
+          <div class="brand-mark">M</div>
+          <div>
+            <h1>Markdown Manager</h1>
+            <p id="libraryCount">0 个文档</p>
+          </div>
+        </div>
+
+        <div class="sidebar-actions">
+          <button class="primary-action" id="newDocumentButton" type="button" title="新建 Markdown">
+            <span aria-hidden="true">+</span>
+            新建
+          </button>
+          <button class="icon-action" id="importButton" type="button" title="导入 Markdown">⇣</button>
+          <button class="icon-action" id="importZipButton" type="button" title="导入 ZIP">Z⇣</button>
+          <button class="icon-action" id="exportZipButton" type="button" title="导出 ZIP">Z⇡</button>
+        </div>
+
+        <label class="search-field">
+          <span>搜索</span>
+          <input id="searchInput" type="search" placeholder="标题或正文" autocomplete="off" />
+        </label>
+
+        <section class="folders-section">
+          <div class="section-heading">
+            <h2>目录</h2>
+            <button class="small-icon-button" id="addFolderButton" type="button" title="新建文件夹">+</button>
+          </div>
+          <nav id="folderList" class="folder-tree" aria-label="文件夹和文档列表"></nav>
+        </section>
+      </aside>
+      <div
+        id="sidebarResizeHandle"
+        class="sidebar-resize-handle"
+        role="separator"
+        aria-orientation="vertical"
+        aria-label="调整目录栏宽度"
+        tabindex="0"
+      ></div>
+
+      <main class="workspace">
+        <section class="editor-pane" aria-label="编辑器">
+          <div id="emptyState" class="empty-state">
+            <h2>选择或新建一个 Markdown 文档</h2>
+            <p>左侧目录负责文件夹分类和文档管理，右侧会实时显示编辑和预览。</p>
+            <button id="emptyNewButton" class="primary-action" type="button">
+              <span aria-hidden="true">+</span>
+              新建 Markdown
+            </button>
+          </div>
+
+          <div id="editorSurface" class="editor-surface hidden">
+            <header class="editor-header">
+              <div class="title-stack">
+                <input id="titleInput" class="title-input" type="text" aria-label="文档标题" />
+                <p id="sourcePathLabel" class="source-path">本地资料库</p>
+              </div>
+              <div class="editor-actions">
+                <select id="folderSelect" class="folder-select" aria-label="选择文件夹"></select>
+                <button class="secondary-action" id="saveSourceButton" type="button">保存</button>
+                <button class="secondary-action" id="exportButton" type="button">另存</button>
+                <button class="danger-action" id="deleteButton" type="button">删除</button>
+              </div>
+            </header>
+
+            <div class="editor-grid">
+              <div class="editor-column">
+                <div class="column-heading">
+                  <h3>Markdown</h3>
+                  <span id="saveStatus">已保存</span>
+                </div>
+                <textarea id="markdownInput" spellcheck="false" aria-label="Markdown 编辑区"></textarea>
+              </div>
+              <div
+                id="editorResizeHandle"
+                class="resize-handle"
+                role="separator"
+                aria-orientation="vertical"
+                aria-label="调整编辑和预览宽度"
+                tabindex="0"
+              ></div>
+              <div class="preview-column">
+                <div class="column-heading">
+                  <h3>预览</h3>
+                  <div class="preview-actions">
+                    <button class="small-text-button" id="toggleEditorButton" type="button">收起编辑</button>
+                    <button class="small-text-button" id="copyHtmlButton" type="button">复制 HTML</button>
+                  </div>
+                </div>
+                <article id="preview" class="markdown-preview"></article>
+              </div>
+            </div>
+          </div>
+        </section>
+      </main>
+    </div>
+    <div id="contextMenu" class="context-menu hidden" role="menu"></div>
+    <div id="textDialogOverlay" class="dialog-overlay hidden" role="presentation">
+      <form id="textDialog" class="text-dialog" role="dialog" aria-modal="true" aria-labelledby="textDialogTitle">
+        <h2 id="textDialogTitle">输入名称</h2>
+        <input id="textDialogInput" type="text" autocomplete="off" />
+        <p id="textDialogError" class="dialog-error"></p>
+        <div class="dialog-actions">
+          <button id="textDialogCancel" class="secondary-action" type="button">取消</button>
+          <button class="primary-action" type="submit">确定</button>
+        </div>
+      </form>
+    </div>
+
+    <script src="./vendor/dompurify/purify.min.js"></script>
+    <script src="./vendor/marked/marked.min.js"></script>
+    <script src="./web-adapter.js"></script>
+    <script src="./app.js"></script>
+  </body>
+</html>

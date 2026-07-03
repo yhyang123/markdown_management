@@ -1,0 +1,75 @@
+{
+  "name": "markdown-manager",
+  "version": "1.4.0",
+  "description": "A Markdown file manager with live preview, folder organization, macOS DMG builds, and NAS web deployment.",
+  "main": "src/main.js",
+  "author": "Markdown Manager",
+  "license": "MIT",
+  "private": true,
+  "keywords": [
+    "markdown",
+    "electron",
+    "nas",
+    "docker",
+    "notes"
+  ],
+  "scripts": {
+    "start": "electron .",
+    "pack": "electron-builder --dir",
+    "dist": "electron-builder --mac dmg",
+    "dist:mac:arm64": "electron-builder --mac dmg --arm64",
+    "dist:mac:x64": "electron-builder --mac dmg --x64",
+    "dist:mac:universal": "electron-builder --mac dmg --universal",
+    "release": "npm run dist && node scripts/archive-release.js",
+    "release:archive": "node scripts/archive-release.js",
+    "web": "node src/web-server.js",
+    "lint": "node scripts/validate-syntax.js"
+  },
+  "dependencies": {
+    "adm-zip": "^0.5.18",
+    "dompurify": "^3.1.7",
+    "express": "^5.2.1",
+    "marked": "^12.0.2",
+    "multer": "^2.2.0"
+  },
+  "devDependencies": {
+    "electron": "^31.7.7",
+    "electron-builder": "^24.13.3"
+  },
+  "build": {
+    "appId": "com.local.markdown-manager",
+    "productName": "Markdown Manager",
+    "artifactName": "${productName}-${version}-${os}-${arch}.${ext}",
+    "files": [
+      "src/**/*",
+      "node_modules/adm-zip/**/*",
+      "package.json"
+    ],
+    "mac": {
+      "category": "public.app-category.productivity",
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "arm64",
+            "x64"
+          ]
+        }
+      ]
+    },
+    "dmg": {
+      "contents": [
+        {
+          "x": 130,
+          "y": 220
+        },
+        {
+          "x": 410,
+          "y": 220,
+          "type": "link",
+          "path": "/Applications"
+        }
+      ]
+    }
+  }
+}

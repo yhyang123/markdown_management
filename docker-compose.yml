@@ -1,0 +1,12 @@
+services:
+  markdown-manager:
+    build: .
+    container_name: markdown-manager
+    ports:
+      - "8732:3000"
+    volumes:
+      - ./nas-data:/data
+    environment:
+      - DATA_DIR=/data
+      - PORT=3000
+    restart: unless-stopped

@@ -1,0 +1,13 @@
+node_modules
+dist
+releases
+.git
+.DS_Store
+.env
+.env.*
+npm-debug.log
+data
+nas-data
+*.tar
+*.dmg
+*.blockmap

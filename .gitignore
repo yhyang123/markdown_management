@@ -1,0 +1,15 @@
+node_modules/
+dist/
+releases/
+data/
+nas-data/
+.env
+.env.*
+*.log
+*.tar
+*.dmg
+*.blockmap
+.DS_Store
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
