@@ -7,21 +7,19 @@ const state = {
   search: "",
   expandedFolderIds: new Set(["inbox"]),
   draggedFolderId: null,
+  draggedDocumentId: null,
   saveTimer: null,
   toastTimer: null
 };
 
 const els = {
   libraryCount: document.getElementById("libraryCount"),
+  brandMenuButton: document.getElementById("brandMenuButton"),
   folderList: document.getElementById("folderList"),
   searchInput: document.getElementById("searchInput"),
   newDocumentButton: document.getElementById("newDocumentButton"),
   emptyNewButton: document.getElementById("emptyNewButton"),
-  importButton: document.getElementById("importButton"),
-  importZipButton: document.getElementById("importZipButton"),
-  exportZipButton: document.getElementById("exportZipButton"),
   addFolderButton: document.getElementById("addFolderButton"),
-  sidebarToggleButton: document.getElementById("sidebarToggleButton"),
   sidebarResizeHandle: document.getElementById("sidebarResizeHandle"),
   contextMenu: document.getElementById("contextMenu"),
   textDialogOverlay: document.getElementById("textDialogOverlay"),
@@ -36,10 +34,13 @@ const els = {
   editorResizeHandle: document.getElementById("editorResizeHandle"),
   titleInput: document.getElementById("titleInput"),
   sourcePathLabel: document.getElementById("sourcePathLabel"),
-  folderSelect: document.getElementById("folderSelect"),
-  saveSourceButton: document.getElementById("saveSourceButton"),
-  exportButton: document.getElementById("exportButton"),
-  deleteButton: document.getElementById("deleteButton"),
+  folderDialogOverlay: document.getElementById("folderDialogOverlay"),
+  folderDialog: document.getElementById("folderDialog"),
+  folderDialogTitle: document.getElementById("folderDialogTitle"),
+  folderDialogSelect: document.getElementById("folderDialogSelect"),
+  folderDialogNewFolder: document.getElementById("folderDialogNewFolder"),
+  folderDialogError: document.getElementById("folderDialogError"),
+  folderDialogCancel: document.getElementById("folderDialogCancel"),
   markdownInput: document.getElementById("markdownInput"),
   preview: document.getElementById("preview"),
   saveStatus: document.getElementById("saveStatus"),
@@ -73,6 +74,21 @@ function getActiveDocument() {
 function getFolderName(folderId) {
   const folder = state.library.folders.find((item) => item.id === folderId);
   return folder?.name || "未分类";
+}
+
+function getFolderPath(folderId) {
+  const foldersById = new Map(state.library.folders.map((folder) => [folder.id, folder]));
+  const segments = [];
+  const visited = new Set();
+  let folder = foldersById.get(folderId);
+
+  while (folder && !visited.has(folder.id)) {
+    visited.add(folder.id);
+    segments.unshift(folder.name);
+    folder = folder.parentId ? foldersById.get(folder.parentId) : null;
+  }
+
+  return segments.join(" / ") || getFolderName(folderId);
 }
 
 function getDocumentsInFolder(folderId) {
@@ -166,7 +182,9 @@ function loadEditorLayout() {
 
 function loadSidebarLayout() {
   const storedWidth = Number(window.localStorage.getItem("markdown-manager-sidebar-width"));
+  const sidebarCollapsed = window.localStorage.getItem("markdown-manager-sidebar-collapsed") === "true";
   setSidebarWidth(Number.isFinite(storedWidth) ? storedWidth : 320);
+  setSidebarCollapsed(sidebarCollapsed);
 }
 
 function setSidebarWidth(width) {
@@ -187,6 +205,16 @@ function setEditorCollapsed(collapsed) {
   els.toggleEditorButton.title = collapsed ? "展开编辑栏" : "收起编辑栏";
   els.editorResizeHandle.setAttribute("aria-hidden", collapsed ? "true" : "false");
   window.localStorage.setItem("markdown-manager-editor-collapsed", String(collapsed));
+}
+
+function setSidebarCollapsed(collapsed) {
+  document.body.classList.toggle("sidebar-collapsed", collapsed);
+  els.sidebarResizeHandle.title = collapsed ? "展开目录栏" : "点击折叠目录栏，拖动调整宽度";
+  els.sidebarResizeHandle.setAttribute(
+    "aria-label",
+    collapsed ? "点击展开目录栏" : "点击折叠目录栏，拖动调整目录栏宽度"
+  );
+  window.localStorage.setItem("markdown-manager-sidebar-collapsed", String(collapsed));
 }
 
 function isEditorCollapsed() {
@@ -276,9 +304,9 @@ function createFolderNode(folder, depth) {
   row.style.setProperty("--tree-depth", String(depth));
   row.addEventListener("dragstart", (event) => startFolderDrag(event, folder));
   row.addEventListener("dragover", (event) => handleFolderDragOver(event, folder, row));
-  row.addEventListener("dragleave", () => row.classList.remove("drag-before", "drag-after", "drag-inside"));
+  row.addEventListener("dragleave", () => row.classList.remove("drag-before", "drag-after", "drag-inside", "document-drop"));
   row.addEventListener("drop", (event) => dropFolder(event, folder, row));
-  row.addEventListener("dragend", clearFolderDragState);
+  row.addEventListener("dragend", clearDragState);
   row.addEventListener("contextmenu", (event) => {
     event.preventDefault();
     state.activeFolderId = folder.id;
@@ -348,7 +376,10 @@ function createDocumentNode(item, depth) {
   const button = document.createElement("button");
   button.type = "button";
   button.className = `tree-document${item.id === state.activeDocumentId ? " active" : ""}`;
+  button.draggable = true;
   button.style.setProperty("--tree-depth", String(depth));
+  button.addEventListener("dragstart", (event) => startDocumentDrag(event, item));
+  button.addEventListener("dragend", clearDragState);
   button.addEventListener("click", async () => {
     await selectDocument(item.id);
   });
@@ -383,17 +414,14 @@ function toggleFolder(folderId) {
   renderTree();
 }
 
-function renderFolderSelect() {
-  const options = getSortedFolders().map((folder) => {
+function createFolderOptions(selectedFolderId) {
+  return getSortedFolders().map((folder) => {
     const option = document.createElement("option");
     option.value = folder.id;
     option.textContent = `${"  ".repeat(getFolderDepth(folder.id))}${folder.name}`;
+    option.selected = folder.id === selectedFolderId;
     return option;
   });
-
-  els.folderSelect.replaceChildren(...options);
-  const activeDoc = getActiveDocument();
-  els.folderSelect.value = activeDoc?.folderId || "inbox";
 }
 
 function getFolderDepth(folderId) {
@@ -424,8 +452,7 @@ function renderEditor() {
   els.editorSurface.classList.remove("hidden");
   els.titleInput.value = activeDoc.title;
   els.markdownInput.value = activeDoc.content;
-  els.sourcePathLabel.textContent = activeDoc.sourcePath ? activeDoc.sourcePath : "本地资料库";
-  renderFolderSelect();
+  els.sourcePathLabel.textContent = `保存到：${getFolderPath(activeDoc.folderId)}`;
   renderMarkdown(activeDoc.content);
 }
 
@@ -508,9 +535,18 @@ async function flushPendingSave() {
 async function createDocument(folderId = state.activeFolderId) {
   try {
     const fallbackFolderId = state.library.folders[0]?.id || "inbox";
-    const targetFolderId = state.library.folders.some((folder) => folder.id === folderId)
+    const initialFolderId = state.library.folders.some((folder) => folder.id === folderId)
       ? folderId
       : fallbackFolderId;
+    const targetFolderId = await askForFolder({
+      title: "选择新文档文件夹",
+      value: initialFolderId
+    });
+
+    if (!targetFolderId) {
+      return;
+    }
+
     const newDoc = await api.createDocument({
       title: "新文档",
       content: starterMarkdown,
@@ -525,6 +561,39 @@ async function createDocument(folderId = state.activeFolderId) {
   } catch (error) {
     showToast(error.message || "新建失败");
   }
+}
+
+async function moveDocumentToFolder(item, folderId) {
+  if (!item || !folderId || item.folderId === folderId) {
+    return;
+  }
+
+  try {
+    await flushPendingSave();
+    const updatedDoc = await api.updateDocument(item.id, { folderId });
+    Object.assign(item, updatedDoc);
+    state.activeDocumentId = item.id;
+    state.activeFolderId = folderId;
+    state.expandedFolderIds.add(folderId);
+    saveExpandedFolders();
+    await refreshLibrary();
+    showToast(`已移动到 ${getFolderPath(folderId)}`);
+  } catch (error) {
+    showToast(error.message || "移动文档失败");
+  }
+}
+
+async function moveDocumentWithDialog(item = getActiveDocument()) {
+  if (!item) {
+    return;
+  }
+
+  const folderId = await askForFolder({
+    title: "移动到文件夹",
+    value: item.folderId
+  });
+
+  await moveDocumentToFolder(item, folderId);
 }
 
 async function importDocuments() {
@@ -758,9 +827,27 @@ async function createFolderInFolder(parentId) {
 function getDocumentMenuItems(item) {
   return [
     { label: "重命名", action: () => renameDocument(item) },
+    { label: "移动到文件夹", action: () => moveDocumentWithDialog(item) },
     { type: "separator" },
     { label: "删除", danger: true, action: () => deleteDocument(item) }
   ];
+}
+
+function getBrandMenuItems() {
+  return [
+    { label: "导入文档", action: importDocuments },
+    { label: "导入 ZIP", action: importZip },
+    { type: "separator" },
+    { label: "导出全部", action: exportLibraryZip }
+  ];
+}
+
+function showBrandMenu(event) {
+  event.preventDefault();
+  event.stopPropagation();
+  const rect = els.brandMenuButton.getBoundingClientRect();
+  showContextMenu(rect.left, rect.bottom + 8, getBrandMenuItems());
+  els.brandMenuButton.setAttribute("aria-expanded", "true");
 }
 
 function showContextMenu(x, y, items) {
@@ -798,6 +885,7 @@ function showContextMenu(x, y, items) {
 
 function hideContextMenu() {
   els.contextMenu.classList.add("hidden");
+  els.brandMenuButton.setAttribute("aria-expanded", "false");
 }
 
 function askForText({ title, value = "", placeholder = "" }) {
@@ -861,32 +949,156 @@ function askForText({ title, value = "", placeholder = "" }) {
   });
 }
 
+function askForFolder({ title, value }) {
+  return new Promise((resolve) => {
+    let done = false;
+
+    const cleanup = () => {
+      els.folderDialog.removeEventListener("submit", submitHandler);
+      els.folderDialogNewFolder.removeEventListener("click", newFolderHandler);
+      els.folderDialogCancel.removeEventListener("click", cancelHandler);
+      els.folderDialogOverlay.removeEventListener("click", overlayHandler);
+      document.removeEventListener("keydown", keyHandler);
+    };
+
+    const finish = (result) => {
+      if (done) {
+        return;
+      }
+      done = true;
+      cleanup();
+      els.folderDialogOverlay.classList.add("hidden");
+      resolve(result);
+    };
+
+    const submitHandler = (event) => {
+      event.preventDefault();
+      const folderId = els.folderDialogSelect.value;
+      if (!state.library.folders.some((folder) => folder.id === folderId)) {
+        els.folderDialogError.textContent = "请选择有效文件夹";
+        els.folderDialogSelect.focus();
+        return;
+      }
+      finish(folderId);
+    };
+
+    const refreshOptions = (selectedFolderId) => {
+      els.folderDialogSelect.replaceChildren(...createFolderOptions(selectedFolderId));
+      els.folderDialogSelect.value = selectedFolderId;
+    };
+
+    const newFolderHandler = async () => {
+      const parentId = state.library.folders.some((folder) => folder.id === els.folderDialogSelect.value)
+        ? els.folderDialogSelect.value
+        : null;
+      els.folderDialogOverlay.classList.add("hidden");
+      const name = await askForText({
+        title: "新建文件夹",
+        value: "",
+        placeholder: "文件夹名称"
+      });
+      if (!done) {
+        els.folderDialogOverlay.classList.remove("hidden");
+      }
+      if (!name) {
+        window.setTimeout(() => els.folderDialogSelect.focus(), 0);
+        return;
+      }
+
+      try {
+        const folder = await api.createFolder({ name, parentId });
+        state.library.folders.push(folder);
+        if (folder.parentId) {
+          state.expandedFolderIds.add(folder.parentId);
+        }
+        state.expandedFolderIds.add(folder.id);
+        saveExpandedFolders();
+        refreshOptions(folder.id);
+        els.folderDialogError.textContent = "";
+        showToast("已创建文件夹");
+        window.setTimeout(() => els.folderDialogSelect.focus(), 0);
+      } catch (error) {
+        els.folderDialogError.textContent = error.message || "创建文件夹失败";
+        window.setTimeout(() => els.folderDialogNewFolder.focus(), 0);
+      }
+    };
+
+    const cancelHandler = () => finish(null);
+    const overlayHandler = (event) => {
+      if (event.target === els.folderDialogOverlay) {
+        finish(null);
+      }
+    };
+    const keyHandler = (event) => {
+      if (event.key === "Escape") {
+        finish(null);
+      }
+    };
+
+    const fallbackFolderId = state.library.folders[0]?.id || "inbox";
+    const selectedFolderId = state.library.folders.some((folder) => folder.id === value)
+      ? value
+      : fallbackFolderId;
+
+    els.folderDialogTitle.textContent = title;
+    refreshOptions(selectedFolderId);
+    els.folderDialogError.textContent = "";
+    els.folderDialogOverlay.classList.remove("hidden");
+    els.folderDialog.addEventListener("submit", submitHandler);
+    els.folderDialogNewFolder.addEventListener("click", newFolderHandler);
+    els.folderDialogCancel.addEventListener("click", cancelHandler);
+    els.folderDialogOverlay.addEventListener("click", overlayHandler);
+    document.addEventListener("keydown", keyHandler);
+
+    window.setTimeout(() => {
+      els.folderDialogSelect.focus();
+    }, 0);
+  });
+}
+
 function toggleSidebar() {
-  document.body.classList.toggle("sidebar-collapsed");
-  const collapsed = document.body.classList.contains("sidebar-collapsed");
-  els.sidebarToggleButton.title = collapsed ? "展开目录栏" : "折叠目录栏";
+  setSidebarCollapsed(!document.body.classList.contains("sidebar-collapsed"));
 }
 
 function startSidebarResize(event) {
-  if (document.body.classList.contains("sidebar-collapsed")) {
+  if (event.button > 0) {
     return;
   }
 
   event.preventDefault();
+
+  if (document.body.classList.contains("sidebar-collapsed")) {
+    setSidebarCollapsed(false);
+    return;
+  }
+
   const pointerId = event.pointerId;
+  const startX = event.clientX;
+  let didResize = false;
   els.sidebarResizeHandle.setPointerCapture(pointerId);
-  document.body.classList.add("resizing-sidebar");
 
   const moveHandler = (moveEvent) => {
+    if (!didResize && Math.abs(moveEvent.clientX - startX) < 4) {
+      return;
+    }
+
+    didResize = true;
+    document.body.classList.add("resizing-sidebar");
     setSidebarWidth(moveEvent.clientX);
   };
 
   const endHandler = () => {
     document.body.classList.remove("resizing-sidebar");
-    els.sidebarResizeHandle.releasePointerCapture(pointerId);
+    if (els.sidebarResizeHandle.hasPointerCapture?.(pointerId)) {
+      els.sidebarResizeHandle.releasePointerCapture(pointerId);
+    }
     window.removeEventListener("pointermove", moveHandler);
     window.removeEventListener("pointerup", endHandler);
     window.removeEventListener("pointercancel", endHandler);
+
+    if (!didResize) {
+      toggleSidebar();
+    }
   };
 
   window.addEventListener("pointermove", moveHandler);
@@ -895,9 +1107,21 @@ function startSidebarResize(event) {
 }
 
 function adjustSidebarWidthFromKeyboard(event) {
-  if (document.body.classList.contains("sidebar-collapsed")) {
+  const collapsed = document.body.classList.contains("sidebar-collapsed");
+  if (event.key === "Enter" || event.key === " ") {
+    event.preventDefault();
+    toggleSidebar();
     return;
   }
+
+  if (collapsed) {
+    if (event.key === "ArrowRight") {
+      event.preventDefault();
+      setSidebarCollapsed(false);
+    }
+    return;
+  }
+
   if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") {
     return;
   }
@@ -962,8 +1186,18 @@ function adjustEditorWidthFromKeyboard(event) {
 
 function startFolderDrag(event, folder) {
   state.draggedFolderId = folder.id;
+  state.draggedDocumentId = null;
   event.dataTransfer.effectAllowed = "move";
+  event.dataTransfer.setData("application/x-markdown-manager-folder", folder.id);
   event.dataTransfer.setData("text/plain", folder.id);
+}
+
+function startDocumentDrag(event, item) {
+  state.draggedDocumentId = item.id;
+  state.draggedFolderId = null;
+  event.dataTransfer.effectAllowed = "move";
+  event.dataTransfer.setData("application/x-markdown-manager-document", item.id);
+  event.dataTransfer.setData("text/plain", item.id);
 }
 
 function getDropPosition(event, row) {
@@ -979,20 +1213,43 @@ function getDropPosition(event, row) {
 }
 
 function handleFolderDragOver(event, targetFolder, row) {
-  const sourceId = event.dataTransfer.getData("text/plain") || state.draggedFolderId;
+  const documentId = event.dataTransfer.getData("application/x-markdown-manager-document") || state.draggedDocumentId;
+  if (documentId) {
+    const documentItem = state.library.documents.find((item) => item.id === documentId);
+    if (!documentItem || documentItem.folderId === targetFolder.id) {
+      return;
+    }
+
+    event.preventDefault();
+    row.classList.remove("drag-before", "drag-after", "drag-inside");
+    row.classList.add("document-drop");
+    return;
+  }
+
+  const sourceId = event.dataTransfer.getData("application/x-markdown-manager-folder") || state.draggedFolderId;
   if (!sourceId || sourceId === targetFolder.id || getDescendantFolderIds(sourceId).has(targetFolder.id)) {
     return;
   }
 
   event.preventDefault();
+  row.classList.remove("document-drop");
   row.classList.remove("drag-before", "drag-after", "drag-inside");
   row.classList.add(`drag-${getDropPosition(event, row)}`);
 }
 
 async function dropFolder(event, targetFolder, row) {
   event.preventDefault();
-  row.classList.remove("drag-before", "drag-after", "drag-inside");
-  const sourceId = event.dataTransfer.getData("text/plain") || state.draggedFolderId;
+  row.classList.remove("drag-before", "drag-after", "drag-inside", "document-drop");
+
+  const documentId = event.dataTransfer.getData("application/x-markdown-manager-document") || state.draggedDocumentId;
+  if (documentId) {
+    const documentItem = state.library.documents.find((item) => item.id === documentId);
+    await moveDocumentToFolder(documentItem, targetFolder.id);
+    clearDragState();
+    return;
+  }
+
+  const sourceId = event.dataTransfer.getData("application/x-markdown-manager-folder") || state.draggedFolderId;
   if (!sourceId || sourceId === targetFolder.id || getDescendantFolderIds(sourceId).has(targetFolder.id)) {
     return;
   }
@@ -1013,13 +1270,16 @@ async function dropFolder(event, targetFolder, row) {
     showToast("已调整文件夹顺序");
   } catch (error) {
     showToast(error.message || "移动文件夹失败");
+  } finally {
+    clearDragState();
   }
 }
 
-function clearFolderDragState() {
+function clearDragState() {
   state.draggedFolderId = null;
+  state.draggedDocumentId = null;
   for (const row of document.querySelectorAll(".tree-folder-row")) {
-    row.classList.remove("drag-before", "drag-after", "drag-inside");
+    row.classList.remove("drag-before", "drag-after", "drag-inside", "document-drop");
   }
 }
 
@@ -1060,18 +1320,12 @@ async function refreshLibrary() {
 }
 
 function bindEvents() {
+  els.brandMenuButton.addEventListener("click", showBrandMenu);
   els.newDocumentButton.addEventListener("click", () => createDocument());
   els.emptyNewButton.addEventListener("click", () => createDocument());
-  els.importButton.addEventListener("click", importDocuments);
-  els.importZipButton.addEventListener("click", importZip);
-  els.exportZipButton.addEventListener("click", exportLibraryZip);
   els.addFolderButton.addEventListener("click", createFolder);
-  els.sidebarToggleButton.addEventListener("click", toggleSidebar);
   els.sidebarResizeHandle.addEventListener("pointerdown", startSidebarResize);
   els.sidebarResizeHandle.addEventListener("keydown", adjustSidebarWidthFromKeyboard);
-  els.saveSourceButton.addEventListener("click", saveSource);
-  els.exportButton.addEventListener("click", exportDocument);
-  els.deleteButton.addEventListener("click", () => deleteDocument());
   els.toggleEditorButton.addEventListener("click", toggleEditorColumn);
   els.editorResizeHandle.addEventListener("pointerdown", startEditorResize);
   els.editorResizeHandle.addEventListener("keydown", adjustEditorWidthFromKeyboard);
@@ -1093,14 +1347,6 @@ function bindEvents() {
     scheduleSave({ content: event.target.value });
   });
 
-  els.folderSelect.addEventListener("change", (event) => {
-    state.activeFolderId = event.target.value;
-    state.expandedFolderIds.add(event.target.value);
-    saveExpandedFolders();
-    scheduleSave({ folderId: event.target.value });
-    renderTree();
-  });
-
   document.addEventListener("click", hideContextMenu);
   document.addEventListener("keydown", (event) => {
     if (event.key === "Escape") {
@@ -1118,8 +1364,6 @@ function bindEvents() {
   api.onMenuAction("menu:import-document", importDocuments);
   api.onMenuAction("menu:import-zip", importZip);
   api.onMenuAction("menu:export-library-zip", exportLibraryZip);
-  api.onMenuAction("menu:save-source", saveSource);
-  api.onMenuAction("menu:export-document", exportDocument);
 }
 
 async function init() {

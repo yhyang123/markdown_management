@@ -46,6 +46,7 @@ const requiredMenuLabels = [
   "重命名文件夹",
   "删除文件夹",
   "重命名",
+  "移动到文件夹",
   "删除"
 ];
 
@@ -59,12 +60,16 @@ console.log("ok context menu labels");
 
 const html = fs.readFileSync(path.join(process.cwd(), "src/renderer/index.html"), "utf8");
 const requiredLayoutElements = [
+  "brandMenuButton",
   "editorResizeHandle",
   "toggleEditorButton",
+  "editor-header-actions",
+  "visually-hidden",
   "resize-handle",
   "sidebarResizeHandle",
-  "importZipButton",
-  "exportZipButton",
+  "folderDialogOverlay",
+  "folderDialogSelect",
+  "folderDialogNewFolder",
   "./vendor/dompurify/purify.min.js",
   "./vendor/marked/marked.min.js",
   "./web-adapter.js"
@@ -77,6 +82,32 @@ for (const marker of requiredLayoutElements) {
 }
 
 console.log("ok editor layout controls");
+
+for (const marker of ["askForFolder", "startDocumentDrag", "moveDocumentToFolder", "document-drop", "newFolderHandler"]) {
+  if (!renderer.includes(marker) && !styles.includes(marker)) {
+    throw new Error(`Missing document move marker: ${marker}`);
+  }
+}
+
+for (const removedMarker of ["saveSourceButton", "exportButton", "deleteButton", "folderSelect", "column-heading"]) {
+  if (html.includes(removedMarker)) {
+    throw new Error(`Removed editor action marker is still present in HTML: ${removedMarker}`);
+  }
+}
+
+for (const marker of ["getBrandMenuItems", "导入文档", "导入 ZIP", "导出全部"]) {
+  if (!renderer.includes(marker) && !html.includes(marker)) {
+    throw new Error(`Missing brand menu marker: ${marker}`);
+  }
+}
+
+for (const removedMarker of ["sidebarToggleButton", "sidebar-toggle", "importButton", "importZipButton", "exportZipButton"]) {
+  if (html.includes(removedMarker) || renderer.includes(removedMarker) || styles.includes(removedMarker)) {
+    throw new Error(`Removed sidebar toggle marker is still present: ${removedMarker}`);
+  }
+}
+
+console.log("ok document move controls");
 
 const main = fs.readFileSync(path.join(process.cwd(), "src/main.js"), "utf8");
 for (const marker of ["library:export-zip", "library:import-zip", "folder:move", "AdmZip"]) {

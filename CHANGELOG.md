@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.4.1
+
+- Moved import/export actions into the brand menu.
+- Refined sidebar collapse interaction through the resize boundary.
+- Tightened folder tree indentation and document alignment.
+- Improved document creation and movement workflows.
+
 ## 1.4.0
 
 - Added NAS web deployment through Express and Docker.

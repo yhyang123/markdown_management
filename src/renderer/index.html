@@ -8,10 +8,18 @@
   </head>
   <body>
     <div class="app-shell">
-      <button class="sidebar-toggle" id="sidebarToggleButton" type="button" title="折叠目录栏">☰</button>
       <aside class="sidebar" aria-label="文档管理">
         <div class="brand">
-          <div class="brand-mark">M</div>
+          <button
+            class="brand-mark brand-menu-button"
+            id="brandMenuButton"
+            type="button"
+            title="打开导入导出菜单"
+            aria-haspopup="menu"
+            aria-expanded="false"
+          >
+            M
+          </button>
           <div>
             <h1>Markdown Manager</h1>
             <p id="libraryCount">0 个文档</p>
@@ -23,9 +31,6 @@
             <span aria-hidden="true">+</span>
             新建
           </button>
-          <button class="icon-action" id="importButton" type="button" title="导入 Markdown">⇣</button>
-          <button class="icon-action" id="importZipButton" type="button" title="导入 ZIP">Z⇣</button>
-          <button class="icon-action" id="exportZipButton" type="button" title="导出 ZIP">Z⇡</button>
         </div>
 
         <label class="search-field">
@@ -46,7 +51,7 @@
         class="sidebar-resize-handle"
         role="separator"
         aria-orientation="vertical"
-        aria-label="调整目录栏宽度"
+        aria-label="点击折叠或展开目录栏，拖动调整目录栏宽度"
         tabindex="0"
       ></div>
 
@@ -67,20 +72,15 @@
                 <input id="titleInput" class="title-input" type="text" aria-label="文档标题" />
                 <p id="sourcePathLabel" class="source-path">本地资料库</p>
               </div>
-              <div class="editor-actions">
-                <select id="folderSelect" class="folder-select" aria-label="选择文件夹"></select>
-                <button class="secondary-action" id="saveSourceButton" type="button">保存</button>
-                <button class="secondary-action" id="exportButton" type="button">另存</button>
-                <button class="danger-action" id="deleteButton" type="button">删除</button>
+              <div class="editor-header-actions">
+                <button class="small-text-button" id="toggleEditorButton" type="button">收起编辑</button>
+                <button class="small-text-button" id="copyHtmlButton" type="button">复制 HTML</button>
               </div>
             </header>
 
             <div class="editor-grid">
               <div class="editor-column">
-                <div class="column-heading">
-                  <h3>Markdown</h3>
-                  <span id="saveStatus">已保存</span>
-                </div>
+                <span id="saveStatus" class="visually-hidden" aria-live="polite">已保存</span>
                 <textarea id="markdownInput" spellcheck="false" aria-label="Markdown 编辑区"></textarea>
               </div>
               <div
@@ -92,13 +92,6 @@
                 tabindex="0"
               ></div>
               <div class="preview-column">
-                <div class="column-heading">
-                  <h3>预览</h3>
-                  <div class="preview-actions">
-                    <button class="small-text-button" id="toggleEditorButton" type="button">收起编辑</button>
-                    <button class="small-text-button" id="copyHtmlButton" type="button">复制 HTML</button>
-                  </div>
-                </div>
                 <article id="preview" class="markdown-preview"></article>
               </div>
             </div>
@@ -114,6 +107,18 @@
         <p id="textDialogError" class="dialog-error"></p>
         <div class="dialog-actions">
           <button id="textDialogCancel" class="secondary-action" type="button">取消</button>
+          <button class="primary-action" type="submit">确定</button>
+        </div>
+      </form>
+    </div>
+    <div id="folderDialogOverlay" class="dialog-overlay hidden" role="presentation">
+      <form id="folderDialog" class="text-dialog" role="dialog" aria-modal="true" aria-labelledby="folderDialogTitle">
+        <h2 id="folderDialogTitle">选择文件夹</h2>
+        <select id="folderDialogSelect" class="dialog-select" aria-label="选择文件夹"></select>
+        <button id="folderDialogNewFolder" class="link-action" type="button">新建文件夹</button>
+        <p id="folderDialogError" class="dialog-error"></p>
+        <div class="dialog-actions">
+          <button id="folderDialogCancel" class="secondary-action" type="button">取消</button>
           <button class="primary-action" type="submit">确定</button>
         </div>
       </form>

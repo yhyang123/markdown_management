@@ -24,9 +24,7 @@ contextBridge.exposeInMainWorld("markdownManager", {
       "menu:new-document",
       "menu:import-document",
       "menu:import-zip",
-      "menu:export-library-zip",
-      "menu:save-source",
-      "menu:export-document"
+      "menu:export-library-zip"
     ]);
 
     if (!allowedChannels.has(channel)) {

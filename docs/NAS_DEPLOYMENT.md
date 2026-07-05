@@ -77,21 +77,21 @@ docker compose up -d
 linux/arm64 NAS 镜像构建命令：
 
 ```bash
-docker buildx build --platform linux/arm64 -t markdown-manager:1.4.0 --load .
-docker save -o releases/v1.4.0/markdown-manager-1.4.0-arm64.tar markdown-manager:1.4.0
+docker buildx build --platform linux/arm64 -t markdown-manager:1.4.1 --load .
+docker save -o releases/v1.4.1/markdown-manager-1.4.1-arm64.tar markdown-manager:1.4.1
 ```
 
 linux/amd64 NAS 镜像构建命令：
 
 ```bash
-docker buildx build --platform linux/amd64 -t markdown-manager:1.4.0 --load .
-docker save -o releases/v1.4.0/markdown-manager-1.4.0-amd64.tar markdown-manager:1.4.0
+docker buildx build --platform linux/amd64 -t markdown-manager:1.4.1 --load .
+docker save -o releases/v1.4.1/markdown-manager-1.4.1-amd64.tar markdown-manager:1.4.1
 ```
 
 ## 创建容器参数
 
 ```text
-镜像：markdown-manager:1.4.0
+镜像：markdown-manager:1.4.1
 容器名称：markdown-manager
 容器端口：3000
 NAS 主机端口：8732

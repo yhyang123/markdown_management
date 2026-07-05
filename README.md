@@ -64,14 +64,14 @@ DATA_DIR=/path/to/markdown-data PORT=3000 npm run web
 本地构建当前机器架构镜像：
 
 ```bash
-docker build -t markdown-manager:1.4.0 .
+docker build -t markdown-manager:1.4.1 .
 ```
 
 为 linux/arm64 NAS 构建并导出镜像：
 
 ```bash
-docker buildx build --platform linux/arm64 -t markdown-manager:1.4.0 --load .
-docker save -o releases/v1.4.0/markdown-manager-1.4.0-arm64.tar markdown-manager:1.4.0
+docker buildx build --platform linux/arm64 -t markdown-manager:1.4.1 --load .
+docker save -o releases/v1.4.1/markdown-manager-1.4.1-arm64.tar markdown-manager:1.4.1
 ```
 
 容器配置：
@@ -134,6 +134,6 @@ npm audit --omit=dev
 
 ## 版本
 
-当前版本：`1.4.0`
+当前版本：`1.4.1`
 
 变更记录见 [CHANGELOG.md](CHANGELOG.md)。

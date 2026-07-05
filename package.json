@@ -1,6 +1,6 @@
 {
   "name": "markdown-manager",
-  "version": "1.4.0",
+  "version": "1.4.1",
   "description": "A Markdown file manager with live preview, folder organization, macOS DMG builds, and NAS web deployment.",
   "main": "src/main.js",
   "author": "Markdown Manager",

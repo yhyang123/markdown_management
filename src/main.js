@@ -242,17 +242,6 @@ function createAppMenu() {
           label: "导出全部为 ZIP...",
           click: () => mainWindow?.webContents.send("menu:export-library-zip")
         },
-        {
-          label: "保存到原路径",
-          accelerator: "CmdOrCtrl+S",
-          click: () => mainWindow?.webContents.send("menu:save-source")
-        },
-        {
-          label: "另存为...",
-          accelerator: "Shift+CmdOrCtrl+S",
-          click: () => mainWindow?.webContents.send("menu:export-document")
-        },
-        { type: "separator" },
         { role: "close" }
       ]
     },

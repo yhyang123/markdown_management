@@ -7,7 +7,7 @@
 版本号保存在 `package.json`：
 
 ```json
-"version": "1.4.0"
+"version": "1.4.1"
 ```
 
 发布新版本前，先更新 `package.json` 和 `package-lock.json` 中的版本号。
@@ -77,8 +77,8 @@ docker save -o releases/v版本号/markdown-manager-版本号-amd64.tar markdown
 示例：
 
 ```bash
-docker buildx build --platform linux/arm64 -t markdown-manager:1.4.0 --load .
-docker save -o releases/v1.4.0/markdown-manager-1.4.0-arm64.tar markdown-manager:1.4.0
+docker buildx build --platform linux/arm64 -t markdown-manager:1.4.1 --load .
+docker save -o releases/v1.4.1/markdown-manager-1.4.1-arm64.tar markdown-manager:1.4.1
 ```
 
 ## GitHub 提交建议
