@@ -532,16 +532,22 @@ async function flushPendingSave() {
   }
 }
 
-async function createDocument(folderId = state.activeFolderId) {
+async function createDocument(folderId = state.activeFolderId, skipFolderDialog = false) {
   try {
     const fallbackFolderId = state.library.folders[0]?.id || "inbox";
     const initialFolderId = state.library.folders.some((folder) => folder.id === folderId)
       ? folderId
       : fallbackFolderId;
-    const targetFolderId = await askForFolder({
-      title: "选择新文档文件夹",
-      value: initialFolderId
-    });
+
+    let targetFolderId;
+    if (skipFolderDialog) {
+      targetFolderId = initialFolderId;
+    } else {
+      targetFolderId = await askForFolder({
+        title: "选择新文档文件夹",
+        value: initialFolderId
+      });
+    }
 
     if (!targetFolderId) {
       return;
@@ -811,7 +817,7 @@ async function copyPreviewHtml() {
 
 function getFolderMenuItems(folder) {
   return [
-    { label: "新增文档", action: () => createDocument(folder.id) },
+    { label: "新增文档", action: () => createDocument(folder.id, true) },
     { label: "新增文件夹", action: () => createFolderInFolder(folder.id) },
     { type: "separator" },
     { label: "重命名文件夹", action: () => renameFolder(folder) },
